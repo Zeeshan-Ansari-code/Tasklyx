@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Calendar, Users, Flag, FileText, CheckCircle2, X, Search, MessageSquare, Send, Tag, Paperclip, Trash2 } from "lucide-react";
+import { Calendar, Users, Flag, FileText, CheckCircle2, X, Search, MessageSquare, Send, Tag, Paperclip, Trash2, Upload, XCircle, Sparkles, Loader2 } from "lucide-react";
 import Modal from "../ui/Modal";
 import Input from "../ui/Input";
 import Label from "../ui/Label";
@@ -40,6 +40,11 @@ const TaskEditModal = ({ isOpen, onClose, task, boardId, lists, boardMembers = [
   const [newLabelColor, setNewLabelColor] = useState("#3b82f6");
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [customFieldDefinitions, setCustomFieldDefinitions] = useState([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
+  const [suggestingAssignee, setSuggestingAssignee] = useState(false);
+  const [enhancingDescription, setEnhancingDescription] = useState(false);
 
   useEffect(() => {
     if (task && boardId) {
@@ -207,6 +212,211 @@ const TaskEditModal = ({ isOpen, onClose, task, boardId, lists, boardMembers = [
     }
   };
 
+  const handleFileUpload = async (file) => {
+    if (!file || !task?._id) return;
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error("File size exceeds 10MB limit");
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("userId", user?.id || "");
+
+      const response = await fetch(`/api/tasks/${task._id}/attachments`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("File uploaded successfully");
+        // Refresh task data
+        if (onUpdate) {
+          await onUpdate();
+        }
+      } else {
+        toast.error(data.message || "Failed to upload file");
+      }
+    } catch (error) {
+      console.error("[File Upload] Error:", error);
+      toast.error("Failed to upload file");
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentUrl) => {
+    if (!task?._id) return;
+
+    try {
+      const response = await fetch(
+        `/api/tasks/${task._id}/attachments?url=${encodeURIComponent(attachmentUrl)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Attachment deleted");
+        // Refresh task data
+        if (onUpdate) {
+          await onUpdate();
+        }
+      } else {
+        toast.error(data.message || "Failed to delete attachment");
+      }
+    } catch (error) {
+      console.error("[File Delete] Error:", error);
+      toast.error("Failed to delete attachment");
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleSuggestAssignee = async () => {
+    if (!task || !boardMembers?.length) return;
+
+    setSuggestingAssignee(true);
+    try {
+      const response = await fetch("/api/ai/suggest-assignee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task: {
+            title: formData.title,
+            description: formData.description,
+            priority: formData.priority,
+            dueDate: formData.dueDate,
+          },
+          boardMembers: boardMembers.map(m => ({
+            _id: m._id || m.id,
+            name: m.name,
+            email: m.email,
+          })),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429 || data.isQuotaError) {
+          const retryTime = data.retryAfter ? ` Please try again in ${Math.ceil(data.retryAfter)} seconds.` : "";
+          toast.error(`API Quota Exceeded${retryTime}`, {
+            description: "You've reached your Gemini API free tier limit.",
+          });
+        } else {
+          toast.error(data.message || "Failed to suggest assignee");
+        }
+        return;
+      }
+
+      if (data.success && data.suggestion?.suggestedAssigneeId) {
+        const suggestedId = data.suggestion.suggestedAssigneeId;
+        if (!formData.assignees.includes(suggestedId)) {
+          setFormData({
+            ...formData,
+            assignees: [...formData.assignees, suggestedId],
+          });
+          toast.success(`AI suggested: ${data.suggestion.reason || "Best match"}`);
+        } else {
+          toast.info("Suggested assignee is already assigned");
+        }
+      } else {
+        toast.info("AI couldn't suggest an assignee. Please select manually.");
+      }
+    } catch (error) {
+      console.error("[AI Suggest Assignee] Error:", error);
+      toast.error("Failed to get AI suggestion");
+    } finally {
+      setSuggestingAssignee(false);
+    }
+  };
+
+  const handleEnhanceDescription = async () => {
+    if (!formData.description?.trim()) {
+      toast.error("Please enter a description first");
+      return;
+    }
+
+    setEnhancingDescription(true);
+    try {
+      const response = await fetch("/api/ai/enhance-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: formData.description,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429 || data.isQuotaError) {
+          const retryTime = data.retryAfter ? ` Please try again in ${Math.ceil(data.retryAfter)} seconds.` : "";
+          toast.error(`API Quota Exceeded${retryTime}`, {
+            description: "You've reached your Gemini API free tier limit.",
+          });
+        } else {
+          toast.error(data.message || "Failed to enhance description");
+        }
+        return;
+      }
+
+      if (data.success && data.enhancedDescription) {
+        setFormData({
+          ...formData,
+          description: data.enhancedDescription,
+        });
+        toast.success("Description enhanced with AI!");
+      } else {
+        toast.error("Failed to enhance description");
+      }
+    } catch (error) {
+      console.error("[AI Enhance Description] Error:", error);
+      toast.error("Failed to enhance description");
+    } finally {
+      setEnhancingDescription(false);
+    }
+  };
+
   const priorityOptions = [
     { value: "low", label: "Low", color: "default" },
     { value: "medium", label: "Medium", color: "warning" },
@@ -249,7 +459,31 @@ const TaskEditModal = ({ isOpen, onClose, task, boardId, lists, boardMembers = [
 
         {/* Description */}
         <div>
-          <Label>Description</Label>
+          <div className="flex items-center justify-between mb-2">
+            <Label>Description</Label>
+            {formData.description && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleEnhanceDescription}
+                disabled={enhancingDescription}
+                className="h-7 text-xs text-foreground hover:text-primary"
+              >
+                {enhancingDescription ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin text-primary" />
+                    Enhancing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3 w-3 mr-1 text-primary" />
+                    Enhance with AI
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
           <Textarea
             value={formData.description}
             onChange={(e) =>
@@ -352,7 +586,7 @@ const TaskEditModal = ({ isOpen, onClose, task, boardId, lists, boardMembers = [
                             ),
                           });
                         }}
-                        className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
+                        className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5 text-foreground hover:text-destructive transition-colors"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -364,14 +598,33 @@ const TaskEditModal = ({ isOpen, onClose, task, boardId, lists, boardMembers = [
             
             {/* Add Assignee Dropdown */}
             <div className="relative" ref={assigneeDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
-                className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
-              >
-                <Users className="h-4 w-4" />
-                Add Assignee
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors flex-1"
+                >
+                  <Users className="h-4 w-4" />
+                  Add Assignee
+                </button>
+                {boardMembers?.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSuggestAssignee}
+                    disabled={suggestingAssignee}
+                    className="px-3 text-foreground"
+                    title="AI suggests best assignee"
+                  >
+                    {suggestingAssignee ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    )}
+                  </Button>
+                )}
+              </div>
               
               {showAssigneeDropdown && (
                 <div className="absolute z-100 w-full mt-1 bg-card border border-border rounded-lg shadow-xl max-h-60 overflow-hidden top-full left-0 right-0 sm:right-auto max-w-[calc(100vw-4rem)] sm:max-w-none">
@@ -496,7 +749,7 @@ const TaskEditModal = ({ isOpen, onClose, task, boardId, lists, boardMembers = [
                           labels: formData.labels.filter((_, i) => i !== index),
                         });
                       }}
-                      className="ml-1 hover:opacity-80"
+                      className="ml-1 hover:opacity-80 text-foreground hover:text-destructive transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -549,6 +802,7 @@ const TaskEditModal = ({ isOpen, onClose, task, boardId, lists, boardMembers = [
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className="text-foreground hover:text-destructive"
                   onClick={() => {
                     setShowLabelInput(false);
                     setNewLabelName("");
@@ -575,47 +829,96 @@ const TaskEditModal = ({ isOpen, onClose, task, boardId, lists, boardMembers = [
         {task && (
           <div>
             <Label>Attachments</Label>
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 space-y-3">
               {task.attachments && task.attachments.length > 0 ? (
                 <div className="space-y-2">
                   {task.attachments.map((attachment, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 p-2 border rounded-lg hover:bg-accent transition-colors"
+                      className="flex items-center gap-2 p-3 border border-border/50 rounded-lg hover:bg-accent/50 transition-colors group"
                     >
-                      <Paperclip className="h-4 w-4 text-muted-foreground" />
+                      <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
                       <a
                         href={attachment.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 text-sm text-primary hover:underline truncate"
+                        className="flex-1 text-sm text-primary hover:underline truncate min-w-0"
                       >
                         {attachment.name}
                       </a>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground shrink-0">
                         {attachment.uploadedAt
                           ? new Date(attachment.uploadedAt).toLocaleDateString()
                           : ""}
                       </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteAttachment(attachment.url)}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No attachments yet
-                </p>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  toast.info("File upload feature coming soon");
-                }}
+              ) : null}
+              
+              {/* File Upload Area */}
+              <div
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
+                  dragActive
+                    ? "border-primary bg-primary/5"
+                    : "border-border/50 hover:border-primary/50"
+                }`}
               >
-                <Paperclip className="h-4 w-4 mr-2" />
-                Add Attachment
-              </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                />
+                <div className="flex flex-col items-center justify-center text-center">
+                  <Upload
+                    className={`h-8 w-8 mb-2 ${
+                      dragActive ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  />
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {dragActive
+                      ? "Drop file here"
+                      : "Drag and drop a file here, or click to browse"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Max file size: 10MB
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingFile}
+                  >
+                    {uploadingFile ? (
+                      <>
+                        <div className="h-4 w-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Select File
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}

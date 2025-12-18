@@ -29,7 +29,7 @@ import Input from "../ui/Input";
 import { Plus, Copy } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-const KanbanBoard = ({ boardId, initialLists = [], boardMembers = [] }) => {
+const KanbanBoard = ({ boardId, initialLists = [], boardMembers = [], board = null }) => {
   const { user } = useAuth();
   const [lists, setLists] = useState(initialLists);
   const [activeId, setActiveId] = useState(null);
@@ -482,6 +482,10 @@ const KanbanBoard = ({ boardId, initialLists = [], boardMembers = [] }) => {
                   onDuplicateTask={handleDuplicateTask}
                   onEditList={handleEditList}
                   onDeleteList={handleDeleteList}
+                  boardId={boardId}
+                  boardTitle={board?.title || ""}
+                  availableLists={lists}
+                  onRefresh={fetchLists}
                 />
               );
             })}

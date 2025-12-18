@@ -5,8 +5,8 @@ const Textarea = ({ className, error, ...props }) => {
     <div className="w-full">
       <textarea
         className={cn(
-          "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          error && "border-destructive focus-visible:ring-destructive",
+          "flex min-h-[80px] w-full rounded-lg border border-border/50 bg-background px-3.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 resize-y",
+          error && "border-destructive focus:ring-destructive focus:border-destructive",
           className
         )}
         {...props}

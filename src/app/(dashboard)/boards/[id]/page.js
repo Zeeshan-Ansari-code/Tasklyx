@@ -239,6 +239,7 @@ export default function BoardDetailPage() {
             boardId={boardId} 
             initialLists={board.lists || []}
             boardMembers={getBoardMembers(board)}
+            board={board}
           />
         </div>
       </div>

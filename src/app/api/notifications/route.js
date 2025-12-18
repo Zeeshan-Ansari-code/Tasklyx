@@ -37,35 +37,45 @@ export async function GET(request) {
       .limit(50);
 
     // Fix malformed links in notifications
-    const fixedNotifications = notifications.map((notification) => {
-      if (notification.link) {
-        // If link contains encoded object, try to extract the board ID from relatedBoard
-        if (notification.link.includes('%') || notification.link.includes('ObjectId')) {
-          let fixedLink = notification.link;
-          
-          // Try to extract board ID from relatedBoard if available
-          if (notification.relatedBoard) {
-            const boardId = notification.relatedBoard._id?.toString() || notification.relatedBoard.toString();
-            
-            // Reconstruct the link based on notification type
-            if (notification.type === 'task_assigned' || notification.type === 'task_comment' || notification.type === 'task_deadline') {
-              const taskId = notification.relatedTask?._id?.toString() || notification.relatedTask?.toString();
-              fixedLink = `/boards/${boardId}${taskId ? `?task=${taskId}` : ''}`;
-            } else if (notification.type === 'board_invite') {
-              fixedLink = `/boards/${boardId}`;
+    const fixedNotifications = await Promise.all(
+      notifications.map(async (notification) => {
+        try {
+          if (notification.link) {
+            // If link contains encoded object, try to extract the board ID from relatedBoard
+            if (notification.link.includes('%') || notification.link.includes('ObjectId')) {
+              let fixedLink = notification.link;
+              
+              // Try to extract board ID from relatedBoard if available
+              if (notification.relatedBoard) {
+                const boardId = notification.relatedBoard._id?.toString() || notification.relatedBoard.toString();
+                
+                // Reconstruct the link based on notification type
+                if (notification.type === 'task_assigned' || notification.type === 'task_comment' || notification.type === 'task_deadline') {
+                  const taskId = notification.relatedTask?._id?.toString() || notification.relatedTask?.toString();
+                  fixedLink = `/boards/${boardId}${taskId ? `?task=${taskId}` : ''}`;
+                } else if (notification.type === 'board_invite') {
+                  fixedLink = `/boards/${boardId}`;
+                }
+              }
+              
+              // Update the notification in database if link was fixed
+              if (fixedLink !== notification.link) {
+                await Notification.findByIdAndUpdate(notification._id, { link: fixedLink }).catch((err) => {
+                  console.error("[Notifications API] Error updating notification link:", err);
+                });
+              }
+              
+              return { ...notification.toObject(), link: fixedLink };
             }
           }
-          
-          // Update the notification in database if link was fixed
-          if (fixedLink !== notification.link) {
-            Notification.findByIdAndUpdate(notification._id, { link: fixedLink }).catch(() => {});
-          }
-          
-          return { ...notification.toObject(), link: fixedLink };
+          return notification.toObject ? notification.toObject() : notification;
+        } catch (err) {
+          console.error("[Notifications API] Error processing notification:", err);
+          // Return the notification as-is if there's an error processing it
+          return notification.toObject ? notification.toObject() : notification;
         }
-      }
-      return notification;
-    });
+      })
+    );
 
     const unreadCount = await Notification.countDocuments({
       user: userId,

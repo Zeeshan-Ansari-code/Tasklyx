@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Button from "./Button";
 
-const Modal = ({ isOpen, onClose, title, children, size = "default", footer }) => {
+const Modal = ({ isOpen, onClose, title, children, size = "default", footer, className }) => {
   const sizes = {
     sm: "max-w-md",
     default: "max-w-lg",
@@ -40,7 +40,8 @@ const Modal = ({ isOpen, onClose, title, children, size = "default", footer }) =
       <div
         className={cn(
           "relative w-full bg-card rounded-lg shadow-lg animate-fade-in my-auto max-h-[90vh] flex flex-col overflow-hidden",
-          sizes[size]
+          sizes[size],
+          className
         )}
         onClick={(e) => e.stopPropagation()}
       >
