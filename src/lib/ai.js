@@ -1,17 +1,36 @@
 /**
  * AI Utility Functions
  * Provides AI-powered features for the project management tool
- * Uses Google Gemini API
+ * Supports Google Gemini API and Hugging Face Chat Completions API
+ * 
+ * Hugging Face uses the Chat Completions API (2024-2025):
+ * - Endpoint: https://api.huggingface.co/v1/chat/completions
+ * - Works with: Llama 3.1, Mistral, Qwen, Zephyr, Phi-3
+ * - Free models available (no Pro account required for recommended models)
  */
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-exp";
+const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
+// Default to stable free tier model: gemini-2.0-flash-001 (stable) or gemini-2.5-flash (newer stable)
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-001";
+// Hugging Face model - use Chat Completions API compatible models
+// Recommended free models: meta-llama/Llama-3.1-8B-Instruct, mistralai/Mistral-7B-Instruct, Qwen/Qwen2.5-7B-Instruct
+const HUGGINGFACE_MODEL = process.env.HUGGINGFACE_MODEL || "meta-llama/Llama-3.1-8B-Instruct";
 
 /**
- * Check if AI is enabled
+ * Check if AI is enabled (supports both Gemini and Hugging Face)
  */
 export function isAIEnabled() {
-  return !!GEMINI_API_KEY;
+  return !!(GEMINI_API_KEY || HUGGINGFACE_API_KEY);
+}
+
+/**
+ * Get the active AI provider
+ */
+function getAIProvider() {
+  if (GEMINI_API_KEY) return "gemini";
+  if (HUGGINGFACE_API_KEY) return "huggingface";
+  return null;
 }
 
 /**
@@ -98,16 +117,181 @@ async function callGemini(messages, options = {}) {
   }
 }
 
-
 /**
- * Unified AI call function - uses Gemini API
+ * Call Hugging Face Chat Completions API (2024-2025)
+ * Uses the official Chat Completions endpoint: https://api.huggingface.co/v1/chat/completions
+ * 
+ * Supported models:
+ * - meta-llama/Llama-3.1-8B-Instruct
+ * - mistralai/Mistral-7B-Instruct
+ * - Qwen/Qwen2.5-7B-Instruct
+ * - HuggingFaceH4/zephyr-7b-beta
  */
-async function callAI(messages, options = {}) {
-  if (!isAIEnabled()) {
-    throw new Error("AI is not enabled. Please set GEMINI_API_KEY in environment variables.");
+async function callHuggingFace(messages, options = {}) {
+  if (!HUGGINGFACE_API_KEY) {
+    throw new Error("Hugging Face API key is not set");
   }
 
-  return await callGemini(messages, options);
+  const model = options.model || HUGGINGFACE_MODEL;
+  
+  // Use the official Chat Completions API endpoint
+  // This is the correct endpoint for chat models (2024-2025)
+  const endpoint = "https://api.huggingface.co/v1/chat/completions";
+  
+  try {
+    // Filter and format messages for the API
+    // Remove system messages from the array (they'll be handled separately if needed)
+    const apiMessages = messages
+      .filter(msg => msg.role !== "system" || msg.content) // Keep system messages
+      .map(msg => ({
+        role: msg.role === "system" ? "user" : msg.role, // Some models don't support "system", use "user"
+        content: msg.content,
+      }));
+    
+    // Extract system message if present
+    const systemMessage = messages.find(msg => msg.role === "system");
+    
+    // Build request body
+    const requestBody = {
+      model: model,
+      messages: apiMessages,
+      max_tokens: options.max_tokens || 1000,
+      temperature: options.temperature || 0.7,
+    };
+    
+    // Some models support system messages in the messages array
+    // If we have a system message, prepend it
+    if (systemMessage && apiMessages.length > 0 && apiMessages[0].role !== "system") {
+      requestBody.messages = [
+        { role: "system", content: systemMessage.content },
+        ...apiMessages,
+      ];
+    }
+    
+    // Make request to Hugging Face Chat Completions API
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${HUGGINGFACE_API_KEY}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+    
+    // Handle response
+    if (!response.ok) {
+      let errorMessage = `Hugging Face API error (${response.status})`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error?.message || errorData.error || errorData.message || errorData.msg || JSON.stringify(errorData) || errorMessage;
+      } catch (e) {
+        // If response is not JSON, try to get text
+        try {
+          const text = await response.text();
+          errorMessage = text || errorMessage;
+        } catch (e2) {
+          // Keep default error message
+        }
+      }
+      
+      // Check for 404 - model not found or endpoint issue
+      if (response.status === 404) {
+        throw new Error(`Model "${model}" not found or Chat Completions API not available. Please verify:\n1. The model name is correct\n2. The model supports Chat Completions API\n3. You have access to the model (some require Pro account)\n\nRecommended free models: meta-llama/Llama-3.1-8B-Instruct, mistralai/Mistral-7B-Instruct`);
+      }
+      
+      // Check for 401 - authentication error
+      if (response.status === 401) {
+        throw new Error(`Hugging Face API authentication failed. Please check your HUGGINGFACE_API_KEY is correct.`);
+      }
+      
+      // Check for 403 - forbidden (model requires Pro account)
+      if (response.status === 403) {
+        throw new Error(`Access denied to model "${model}". This model may require a Hugging Face Pro account. Try using a free model like meta-llama/Llama-3.1-8B-Instruct or mistralai/Mistral-7B-Instruct`);
+      }
+      
+      // Check for rate limit errors
+      if (response.status === 429 || errorMessage.includes("rate limit") || errorMessage.includes("quota")) {
+        const quotaError = new Error(`Hugging Face API rate limit: ${errorMessage}`);
+        quotaError.isQuotaError = true;
+        throw quotaError;
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    // Parse successful response
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      throw new Error(`Failed to parse Hugging Face response: ${e.message}`);
+    }
+    
+    // Check for errors in response (some APIs return errors in 200 response)
+    if (data.error) {
+      throw new Error(data.error.message || data.error || "Unknown error from Hugging Face API");
+    }
+    
+    // Chat Completions API returns: { "choices": [{ "message": { "content": "..." } }] }
+    if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+      const content = data.choices[0]?.message?.content;
+      if (content) {
+        return content.trim();
+      }
+    }
+    
+    // Fallback: check for direct content field
+    if (data.content) {
+      return data.content.trim();
+    }
+    
+    // Log unexpected format for debugging
+    console.error("[AI] Unexpected Hugging Face response format:", JSON.stringify(data, null, 2));
+    throw new Error("Unexpected response format from Hugging Face Chat Completions API");
+  } catch (error) {
+    console.error("[AI] Error calling Hugging Face:", error);
+    // Preserve original error message
+    if (error instanceof Error) {
+      throw error;
+    }
+    // If it's not an Error object, wrap it
+    throw new Error(`Hugging Face API error: ${error?.message || String(error) || "Unknown error"}`);
+  }
+}
+
+
+/**
+ * Unified AI call function - uses Gemini or Hugging Face API
+ * Prefers Gemini if available, falls back to Hugging Face
+ */
+export async function callAI(messages, options = {}) {
+  if (!isAIEnabled()) {
+    throw new Error("AI is not enabled. Please set GEMINI_API_KEY or HUGGINGFACE_API_KEY in environment variables.");
+  }
+
+  const provider = getAIProvider();
+  
+  try {
+    if (provider === "gemini") {
+      return await callGemini(messages, options);
+    } else if (provider === "huggingface") {
+      return await callHuggingFace(messages, options);
+    }
+  } catch (error) {
+    // If Gemini fails and Hugging Face is available, try fallback
+    if (provider === "gemini" && HUGGINGFACE_API_KEY && !error.isQuotaError) {
+      console.log("[AI] Gemini failed, falling back to Hugging Face");
+      try {
+        return await callHuggingFace(messages, options);
+      } catch (fallbackError) {
+        throw error; // Throw original error
+      }
+    }
+    throw error;
+  }
+  
+  throw new Error("No AI provider available");
 }
 
 /**

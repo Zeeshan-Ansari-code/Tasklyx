@@ -2,7 +2,9 @@
 
 ## Overview
 
-Tasklyx now includes AI-powered features to enhance productivity and automate common tasks. These features use **Google Gemini API**.
+Tasklyx now includes AI-powered features to enhance productivity and automate common tasks. These features support **two AI providers**:
+1. **Google Gemini API** - Free tier available (may require billing enabled)
+2. **Hugging Face Chat Completions API** - **FREE - No billing required!** ⭐ Recommended
 
 **💡 Benefits**: Free tier available, cost-effective, fast responses, excellent quality.
 
@@ -20,10 +22,28 @@ Tasklyx now includes AI-powered features to enhance productivity and automate co
 
 Add to your `.env.local` file:
 
+**Important**: Do NOT use quotes around values in `.env.local` files!
+
 ```env
+# Option 1: Hugging Face (FREE - No billing required) ⭐ RECOMMENDED
+# Uses Chat Completions API: https://api.huggingface.co/v1/chat/completions
+HUGGINGFACE_API_KEY=hf_your-actual-token-here
+HUGGINGFACE_MODEL=meta-llama/Llama-3.1-8B-Instruct
+
+# Option 2: Google Gemini (may require billing enabled)
 GEMINI_API_KEY=AIzaSy-your-actual-key-here
-GEMINI_MODEL=gemini-2.0-flash-exp  # Optional: defaults to gemini-2.0-flash-exp
+GEMINI_MODEL=gemini-2.0-flash-001
 ```
+
+**Recommended Hugging Face Models** (all work free with Chat Completions API):
+- `meta-llama/Llama-3.1-8B-Instruct` - ⭐ Recommended
+- `mistralai/Mistral-7B-Instruct` - Excellent quality
+- `Qwen/Qwen2.5-7B-Instruct` - Great performance
+- `HuggingFaceH4/zephyr-7b-beta` - Optimized for chat
+
+**Note**: 
+- ✅ Correct: `HUGGINGFACE_API_KEY=hf_abc123`
+- ❌ Wrong: `HUGGINGFACE_API_KEY="hf_abc123"` (quotes will be included in the value)
 
 **See `SETUP_AI.md` for detailed setup instructions.**
 
@@ -227,46 +247,50 @@ Enhance a task description with AI.
 
 ## Cost Considerations
 
-### OpenAI Pricing (as of 2024)
+### Gemini Pricing (as of 2024)
 
-- **gpt-4o-mini**: ~$0.15 per 1M input tokens, ~$0.60 per 1M output tokens
-- **gpt-4**: ~$30 per 1M input tokens, ~$60 per 1M output tokens
+- **Free Tier**: 15 requests per minute, 1,500 requests per day
+- **Paid Tier**: Very affordable, check current pricing at https://ai.google.dev/pricing
+- **Models**: Most models are free tier eligible (see `/ai-models` page)
 
 ### Estimated Costs per Feature
 
-- **Parse Task**: ~$0.001-0.002 per task
-- **Suggest Assignee**: ~$0.001 per suggestion
-- **Enhance Description**: ~$0.001-0.002 per enhancement
-- **Auto-Categorize**: ~$0.001 per categorization
+- **Free Tier**: All features available within free tier limits
+- **Parse Task**: Free (within limits) or ~$0.0001-0.0005 per task (if over free tier)
+- **Suggest Assignee**: Free (within limits) or ~$0.0001 per suggestion
+- **Enhance Description**: Free (within limits) or ~$0.0001-0.0002 per enhancement
+- **Auto-Categorize**: Free (within limits) or ~$0.0001 per categorization
 
-**Example**: For 1000 tasks created with AI parsing, expect ~$1-2 in API costs.
+**Example**: For 1000 tasks created with AI parsing, expect $0 (free tier) or ~$0.10-0.50 (if over free tier).
 
 ## Best Practices
 
-1. **Use gpt-4o-mini** for most use cases (good balance of cost and quality)
-2. **Monitor API usage** in OpenAI dashboard
-3. **Set usage limits** in OpenAI dashboard to prevent unexpected costs
+1. **Use free tier models** like `gemini-2.0-flash-001` or `gemini-2.5-flash` (stable and free)
+2. **Monitor API usage** in Google AI Studio dashboard
+3. **Check available models** at `/ai-models` page to see free tier options
 4. **Cache results** when possible (future enhancement)
 5. **Make AI optional** - features gracefully degrade if API key is not set
+6. **Respect rate limits** - Free tier: 15 req/min, 1,500/day
 
 ## Troubleshooting
 
 ### "AI is not enabled" Error
 
-- Check that `OPENAI_API_KEY` is set in `.env.local`
+- Check that `GEMINI_API_KEY` is set in `.env.local`
 - Restart the development server after adding the key
-- Verify the API key is valid in OpenAI dashboard
+- Verify the API key is valid in Google AI Studio
 
 ### API Errors
 
-- Check OpenAI API status: https://status.openai.com/
-- Verify your API key has sufficient credits
-- Check rate limits in OpenAI dashboard
+- Check Gemini API status: https://status.cloud.google.com/
+- Verify your API key has sufficient quota
+- Check rate limits (Free tier: 15 req/min, 1,500/day)
+- If quota exceeded, wait for the retry time shown in error message
 
 ### Slow Responses
 
 - AI features may take 1-3 seconds to respond
-- Consider using `gpt-4o-mini` for faster responses
+- Consider using `gemini-2.0-flash-001` or `gemini-2.5-flash` for faster responses
 - Check your internet connection
 
 ## Future Enhancements
@@ -282,9 +306,9 @@ Enhance a task description with AI.
 
 ## Privacy & Security
 
-- All AI requests are sent to OpenAI's servers
+- All AI requests are sent to Google's Gemini API servers
 - Task data is included in API requests
-- Review OpenAI's privacy policy: https://openai.com/policies/privacy-policy
+- Review Google's privacy policy: https://ai.google.dev/terms
 - Consider data sensitivity before using AI features
 - For sensitive data, consider self-hosted AI solutions
 
@@ -292,7 +316,8 @@ Enhance a task description with AI.
 
 For issues or questions:
 1. Check this documentation
-2. Review OpenAI API documentation
+2. Review Gemini API documentation: https://ai.google.dev/docs
 3. Check application logs for error messages
 4. Verify environment variables are set correctly
+5. Visit `/ai-models` page to see available models for your API key
 

@@ -34,45 +34,49 @@ export async function GET(request) {
       .populate("relatedTask", "title")
       .populate("relatedBoard", "title")
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(50)
+      .lean(); // Use lean() for better performance and to avoid Mongoose document issues
 
     // Fix malformed links in notifications
     const fixedNotifications = await Promise.all(
       notifications.map(async (notification) => {
         try {
-          if (notification.link) {
+          // notification is already a plain object from lean()
+          const notif = notification;
+          
+          if (notif.link) {
             // If link contains encoded object, try to extract the board ID from relatedBoard
-            if (notification.link.includes('%') || notification.link.includes('ObjectId')) {
-              let fixedLink = notification.link;
+            if (notif.link.includes('%') || notif.link.includes('ObjectId')) {
+              let fixedLink = notif.link;
               
               // Try to extract board ID from relatedBoard if available
-              if (notification.relatedBoard) {
-                const boardId = notification.relatedBoard._id?.toString() || notification.relatedBoard.toString();
+              if (notif.relatedBoard) {
+                const boardId = notif.relatedBoard._id?.toString() || notif.relatedBoard?.toString() || notif.relatedBoard;
                 
                 // Reconstruct the link based on notification type
-                if (notification.type === 'task_assigned' || notification.type === 'task_comment' || notification.type === 'task_deadline') {
-                  const taskId = notification.relatedTask?._id?.toString() || notification.relatedTask?.toString();
+                if (notif.type === 'task_assigned' || notif.type === 'task_comment' || notif.type === 'task_deadline') {
+                  const taskId = notif.relatedTask?._id?.toString() || notif.relatedTask?.toString() || notif.relatedTask;
                   fixedLink = `/boards/${boardId}${taskId ? `?task=${taskId}` : ''}`;
-                } else if (notification.type === 'board_invite') {
+                } else if (notif.type === 'board_invite') {
                   fixedLink = `/boards/${boardId}`;
                 }
               }
               
               // Update the notification in database if link was fixed
-              if (fixedLink !== notification.link) {
-                await Notification.findByIdAndUpdate(notification._id, { link: fixedLink }).catch((err) => {
+              if (fixedLink !== notif.link && notif._id) {
+                await Notification.findByIdAndUpdate(notif._id, { link: fixedLink }).catch((err) => {
                   console.error("[Notifications API] Error updating notification link:", err);
                 });
               }
               
-              return { ...notification.toObject(), link: fixedLink };
+              return { ...notif, link: fixedLink };
             }
           }
-          return notification.toObject ? notification.toObject() : notification;
+          return notif;
         } catch (err) {
           console.error("[Notifications API] Error processing notification:", err);
           // Return the notification as-is if there's an error processing it
-          return notification.toObject ? notification.toObject() : notification;
+          return notification;
         }
       })
     );
@@ -90,8 +94,12 @@ export async function GET(request) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("[Notifications API] Error:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { 
+        message: "Internal server error",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }
@@ -134,8 +142,12 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("[Notifications API] Error:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      { 
+        message: "Internal server error",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }

@@ -6,7 +6,7 @@ export async function POST(request) {
     if (!isAIEnabled()) {
       return NextResponse.json(
         { 
-          message: "AI is not enabled. Please set GEMINI_API_KEY in environment variables.",
+          message: "AI is not enabled. Please set GEMINI_API_KEY or HUGGINGFACE_API_KEY in environment variables.",
           enabled: false 
         },
         { status: 503 }

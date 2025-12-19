@@ -61,9 +61,37 @@ export default function AIChatPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        const error = new Error(data.message || "Failed to get AI response");
-        error.data = data;
-        throw error;
+        // Handle errors gracefully without throwing to prevent Next.js error overlay
+        let errorContent = "I'm sorry, I encountered an error.";
+        let toastMessage = data.message || "Failed to get AI response";
+        
+        // Check if it's a quota error (429 status or isQuotaError flag)
+        if (response.status === 429 || data.isQuotaError) {
+          const retryAfter = data.retryAfter;
+          const retryTime = retryAfter ? ` Please try again in ${Math.ceil(retryAfter)} seconds.` : "";
+          
+          errorContent = `I'm sorry, but the Gemini API quota has been exceeded. This usually happens when you've used up your free tier limit.${retryTime}\n\nTo continue using AI features, you can:\n1. Wait for the quota to reset (usually 24 hours)\n2. Upgrade your Gemini API plan at https://ai.google.dev/pricing\n3. Check your usage at https://ai.dev/usage`;
+          
+          toastMessage = `API Quota Exceeded${retryTime}`;
+        } else if (data.error?.includes("GEMINI_API_KEY") || data.message?.includes("not enabled")) {
+          errorContent = "I'm sorry, I encountered an error. Please make sure GEMINI_API_KEY is set in your .env.local file and restart your development server.";
+          toastMessage = "AI is not enabled. Please check your API key configuration.";
+        } else if (data.error) {
+          errorContent = `I'm sorry, I encountered an error: ${data.error}`;
+          toastMessage = data.message || "Failed to get AI response";
+        }
+        
+        toast.error(toastMessage);
+        
+        // Add error message to chat
+        const errorMessage = {
+          role: "assistant",
+          content: errorContent,
+          timestamp: new Date(),
+          error: true,
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        return;
       }
 
       const assistantMessage = {
@@ -76,23 +104,13 @@ export default function AIChatPage() {
     } catch (error) {
       console.error("[AI Chat] Error:", error);
       
-      // Handle different error types
-      let errorContent = "I'm sorry, I encountered an error.";
-      let toastMessage = error.message || "Failed to get AI response";
+      // Handle network errors or other unexpected errors
+      let errorContent = "I'm sorry, I encountered an error. Please check your connection and try again.";
+      let toastMessage = "Failed to get AI response";
       
-      if (error.data?.isQuotaError) {
-        // Quota exceeded error
-        const retryAfter = error.data.retryAfter;
-        const retryTime = retryAfter ? ` Please try again in ${Math.ceil(retryAfter)} seconds.` : "";
-        
-        errorContent = `I'm sorry, but the Gemini API quota has been exceeded. This usually happens when you've used up your free tier limit.${retryTime}\n\nTo continue using AI features, you can:\n1. Wait for the quota to reset (usually 24 hours)\n2. Upgrade your Gemini API plan at https://ai.google.dev/pricing\n3. Check your usage at https://ai.dev/usage`;
-        
-        toastMessage = `API Quota Exceeded${retryTime}`;
-      } else if (error.data?.error?.includes("GEMINI_API_KEY") || error.data?.message?.includes("not enabled")) {
-        errorContent = "I'm sorry, I encountered an error. Please make sure GEMINI_API_KEY is set in your .env.local file and restart your development server.";
-        toastMessage = "AI is not enabled. Please check your API key configuration.";
-      } else if (error.data?.error) {
-        errorContent = `I'm sorry, I encountered an error: ${error.data.error}`;
+      if (error.message?.includes("fetch") || error.message?.includes("network")) {
+        errorContent = "I'm sorry, I couldn't connect to the server. Please check your internet connection and try again.";
+        toastMessage = "Connection Error";
       } else if (error.message) {
         errorContent = `I'm sorry, I encountered an error: ${error.message}`;
       }

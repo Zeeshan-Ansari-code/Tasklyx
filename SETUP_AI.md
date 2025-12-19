@@ -1,10 +1,51 @@
-# How to Get Gemini API Key
+# How to Get AI API Key
 
 ## Overview
 
-Tasklyx uses **Google Gemini** AI for all AI-powered features. Gemini offers a free tier and is cost-effective for task management.
+Tasklyx supports **two AI providers**:
+1. **Google Gemini** - Free tier available (may require billing enabled)
+2. **Hugging Face** - **FREE - No billing required!** ⭐ Recommended if you don't want to enable billing
 
-## Get Your Gemini API Key ⭐
+## Option 1: Hugging Face (FREE - No Billing Required) ⭐ RECOMMENDED
+
+### Step 1: Get Your Hugging Face API Key
+
+1. **Go to Hugging Face**: https://huggingface.co/
+2. **Sign up** for a free account (or sign in)
+3. **Go to Settings** → **Access Tokens**: https://huggingface.co/settings/tokens
+4. **Create a new token** (read permission is enough)
+5. **Copy your token** - it looks like: `hf_...`
+
+### Step 2: Add to `.env.local`
+
+**Important**: Do NOT use quotes around values in `.env.local` files!
+
+```env
+HUGGINGFACE_API_KEY=hf_your-actual-token-here
+HUGGINGFACE_MODEL=meta-llama/Llama-3.1-8B-Instruct
+```
+
+**That's it!** No billing required, completely free! 🎉
+
+**Note**: 
+- ✅ Correct: `HUGGINGFACE_API_KEY=hf_abc123`
+- ❌ Wrong: `HUGGINGFACE_API_KEY="hf_abc123"` (quotes will be included in the value)
+
+### Free Models Available (Chat Completions API - 2024-2025):
+These models work with the **Chat Completions API** (`https://api.huggingface.co/v1/chat/completions`):
+
+- `meta-llama/Llama-3.1-8B-Instruct` - **Recommended** ✅ - Fast and capable, works free
+- `mistralai/Mistral-7B-Instruct` - ✅ Works free, excellent quality
+- `Qwen/Qwen2.5-7B-Instruct` - ✅ Works free, great performance
+- `HuggingFaceH4/zephyr-7b-beta` - ✅ Works free, optimized for chat
+
+**⚠️ Important**: The old Inference API endpoint (`api-inference.huggingface.co`) is deprecated for chat models. We now use the **Chat Completions API** which works properly with modern chat models.
+
+**Free Tier Limits**: Varies by model, typically generous for free accounts
+
+---
+
+## Option 2: Google Gemini (May Require Billing)
 
 ### Step 1: Get Your Gemini API Key
 
@@ -13,21 +54,33 @@ Tasklyx uses **Google Gemini** AI for all AI-powered features. Gemini offers a f
 3. **Click "Get API key"** in the left sidebar
 4. **Create API key** in new project (or select existing)
 5. **Copy your API key** - it looks like: `AIzaSy...`
+6. **⚠️ Note**: You may need to enable billing (free tier still works with billing enabled)
 
 ### Step 2: Add to `.env.local`
 
+**Important**: Do NOT use quotes around values in `.env.local` files!
+
 ```env
 GEMINI_API_KEY=AIzaSy-your-actual-key-here
-GEMINI_MODEL=gemini-2.0-flash-exp  # Optional, defaults to gemini-2.0-flash-exp
+GEMINI_MODEL=gemini-2.0-flash-001
 ```
 
-### Gemini Models Available:
-- `gemini-2.0-flash-exp` - **Recommended** - Fast and free tier available
-- `gemini-1.5-pro` - Higher quality, more expensive
-- `gemini-1.5-flash` - Fast and cost-effective
+**Note**: 
+- ✅ Correct: `GEMINI_API_KEY=AIzaSy_abc123`
+- ❌ Wrong: `GEMINI_API_KEY="AIzaSy_abc123"` (quotes will be included in the value)
+
+### Gemini Models Available (Free Tier):
+- `gemini-2.0-flash-001` - **Recommended** - Stable version, free tier ✅
+- `gemini-2.5-flash` - Newer stable version, free tier ✅
+- `gemini-2.5-pro` - Pro model, free tier ✅
+- `gemini-2.0-flash-exp` - Experimental, free tier ✅
+- `gemini-flash-latest` - Always latest flash, free tier ✅
+- `gemini-pro-latest` - Always latest pro, free tier ✅
+
+**Note:** Visit `/ai-models` in your app to see all available models for your API key.
 
 ### Gemini Pricing:
-- **Free Tier**: 15 requests per minute, 1,500 requests per day
+- **Free Tier**: 15 requests per minute, 1,500 requests per day (may require billing enabled)
 - **Paid**: Very affordable, check current pricing at https://ai.google.dev/pricing
 
 
@@ -43,18 +96,40 @@ MONGODB_URI=your-mongodb-uri
 RESEND_API_KEY=your-resend-key
 RESEND_FROM_EMAIL=Tasklyx <your-email@domain.com>
 
-# AI - Gemini
+# AI - Choose ONE option:
+# IMPORTANT: Do NOT use quotes around values!
+
+# Option 1: Hugging Face (FREE - No billing required) ⭐ RECOMMENDED
+HUGGINGFACE_API_KEY=hf_your-token-here
+HUGGINGFACE_MODEL=meta-llama/Llama-3.1-8B-Instruct
+
+# Option 2: Google Gemini (may require billing enabled)
 GEMINI_API_KEY=AIzaSy-your-key-here
-GEMINI_MODEL=gemini-2.0-flash-exp  # Optional
+GEMINI_MODEL=gemini-2.0-flash-001
 ```
 
 ---
+
+## Why Hugging Face? ⭐
+
+| Feature | Hugging Face |
+|---------|--------------|
+| **Free Tier** | ✅ Yes (50-100 req/day) |
+| **Billing Required** | ❌ **NO!** Completely free |
+| **Cost** | **100% Free** |
+| **Speed** | ⚡⚡⚡ Very Fast |
+| **Quality** | ⭐⭐⭐⭐ Excellent |
+| **Setup** | Easy (just sign up) |
+| **Best For** | Task management, productivity tools |
+
+**💡 Perfect for**: Users who want free AI without enabling billing!
 
 ## Why Gemini?
 
 | Feature | Gemini |
 |---------|--------|
 | **Free Tier** | ✅ Yes (15 req/min, 1,500/day) |
+| **Billing Required** | ⚠️ May be required for free tier |
 | **Cost** | Very affordable |
 | **Speed** | ⚡⚡⚡ Very Fast |
 | **Quality** | ⭐⭐⭐⭐ Excellent |
@@ -96,9 +171,11 @@ npm run dev
 
 ### "AI is not enabled" Error
 - ✅ Check `.env.local` exists
-- ✅ Verify `GEMINI_API_KEY` is set
+- ✅ Verify `HUGGINGFACE_API_KEY` or `GEMINI_API_KEY` is set
 - ✅ Restart dev server
-- ✅ Check key format (should start with `AIzaSy...`)
+- ✅ Check key format:
+  - Hugging Face: should start with `hf_...`
+  - Gemini: should start with `AIzaSy...`
 
 ### "Invalid API Key" Error
 - ✅ Verify you copied the full key
