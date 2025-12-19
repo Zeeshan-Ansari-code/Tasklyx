@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Settings, User, Bell, Lock, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const { user, logout, login } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
@@ -37,6 +38,8 @@ export default function SettingsPage() {
     boardInvite: true,
     dailyDigest: false,
   });
+  const avatarInputRef = useRef(null);
+  const [userCreatedAt, setUserCreatedAt] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -45,8 +48,35 @@ export default function SettingsPage() {
         email: user.email || "",
       });
       fetchNotificationPrefs();
+      fetchUserCreatedAt();
     }
   }, [user]);
+
+  const fetchUserCreatedAt = async () => {
+    if (!user?.id || user?.createdAt) {
+      // If createdAt already present in auth user, just use it
+      if (user?.createdAt) {
+        setUserCreatedAt(user.createdAt);
+      }
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/users/profile?userId=${user.id}`);
+      const data = await res.json();
+
+      if (res.ok && data.user?.createdAt) {
+        setUserCreatedAt(data.user.createdAt);
+        // Also patch auth context with createdAt so it's available everywhere
+        login({
+          ...user,
+          createdAt: data.user.createdAt,
+        });
+      }
+    } catch (error) {
+      // Silent fail – we will just show N/A if it can't be loaded
+    }
+  };
 
   const fetchNotificationPrefs = async () => {
     if (!user?.id) return;
@@ -220,6 +250,52 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAvatarClick = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Avatar size must be 2MB or less");
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("userId", user.id);
+      formData.append("file", file);
+
+      const res = await fetch("/api/users/avatar", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("Avatar updated successfully");
+        login({
+          ...user,
+          avatar: data.avatar,
+        });
+      } else {
+        toast.error(data.message || "Failed to update avatar");
+      }
+    } catch (error) {
+      toast.error("Failed to update avatar");
+    } finally {
+      setAvatarUploading(false);
+      // Clear file input so same file can be selected again if needed
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -257,8 +333,21 @@ export default function SettingsPage() {
                     size="lg"
                   />
                   <div>
-                    <Button type="button" variant="outline" size="sm">
-                      Change Avatar
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAvatarClick}
+                      disabled={avatarUploading}
+                    >
+                      {avatarUploading ? "Uploading..." : "Change Avatar"}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">
                       JPG, PNG or GIF. Max size 2MB
@@ -549,8 +638,8 @@ export default function SettingsPage() {
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Member since</p>
                 <p className="font-semibold text-foreground">
-                  {user?.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString("en-US", {
+                  {(user?.createdAt || userCreatedAt)
+                    ? new Date(user?.createdAt || userCreatedAt).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",

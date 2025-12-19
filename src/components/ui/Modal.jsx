@@ -39,7 +39,7 @@ const Modal = ({ isOpen, onClose, title, children, size = "default", footer, cla
       {/* Modal */}
       <div
         className={cn(
-          "relative w-full bg-card rounded-lg shadow-lg animate-fade-in my-auto max-h-[90vh] flex flex-col overflow-hidden",
+          "relative w-full bg-card/98 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-top-2 my-auto max-h-[90vh] flex flex-col overflow-hidden border border-border/60 backdrop-blur-md",
           sizes[size],
           className
         )}

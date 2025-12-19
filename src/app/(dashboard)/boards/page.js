@@ -17,6 +17,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { motion } from "framer-motion";
 
 export default function BoardsPage() {
   const { user } = useAuth();
@@ -277,8 +278,14 @@ export default function BoardsPage() {
               : "space-y-4"
           }
         >
-          {filteredBoards.map((board) => (
-            <div key={board._id} className="relative group">
+          {filteredBoards.map((board, index) => (
+            <motion.div
+              key={board._id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, delay: index * 0.03, ease: "easeOut" }}
+              className="relative group"
+            >
               <Link href={`/boards/${String(board._id)}`}>
                 <Card className="h-full cursor-pointer border-border/50 hover:shadow-lg hover:border-primary/20 transition-all duration-200 group overflow-hidden">
                   <div
@@ -355,7 +362,7 @@ export default function BoardsPage() {
                   <Archive className="h-4 w-4" />
                 </button>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

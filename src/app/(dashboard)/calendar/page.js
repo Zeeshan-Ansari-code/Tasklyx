@@ -175,9 +175,9 @@ export default function CalendarPage() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Calendar */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 max-w-3xl w-full mx-auto">
             <Card className="border-border/50 shadow-sm">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-2xl">
                     {monthNames[currentDate.getMonth()]}{" "}
@@ -203,8 +203,8 @@ export default function CalendarPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-7 gap-2">
+              <CardContent className="pt-2 pb-5">
+                <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                   {/* Day headers */}
                   {dayNames.map((day) => (
                     <div
@@ -227,35 +227,33 @@ export default function CalendarPage() {
                         key={index}
                         onClick={() => date && setSelectedDate(date)}
                         className={cn(
-                          "aspect-square p-2 border rounded-xl text-sm transition-all duration-200",
+                          "h-16 sm:h-20 p-1.5 sm:p-2 border rounded-xl text-xs sm:text-sm transition-all duration-200 flex flex-col items-center justify-center",
                           !date ? "border-transparent" : "border-border/50 hover:bg-accent/50 hover:border-primary/50",
                           isToday(date) && "ring-2 ring-primary shadow-md",
                           isPast(date) && date && "opacity-50",
-                          isSelected && "bg-primary text-primary-foreground shadow-lg scale-105",
+                          isSelected && "bg-primary text-primary-foreground shadow-lg scale-[1.02]",
                           taskCount > 0 && "font-semibold"
                         )}
                         disabled={!date}
                       >
-                        <div className="flex flex-col items-center gap-1">
-                          <span>{date ? date.getDate() : ""}</span>
-                          {taskCount > 0 && (
-                            <div className="flex gap-0.5">
-                              {[...Array(Math.min(taskCount, 3))].map((_, i) => (
-                                <div
-                                  key={i}
-                                  className={`h-1 w-1 rounded-full ${
-                                    isSelected
-                                      ? "bg-primary-foreground"
-                                      : "bg-primary"
-                                  }`}
-                                />
-                              ))}
-                              {taskCount > 3 && (
-                                <span className="text-xs">+{taskCount - 3}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        <span>{date ? date.getDate() : ""}</span>
+                        {taskCount > 0 && (
+                          <div className="flex gap-0.5 mt-1">
+                            {[...Array(Math.min(taskCount, 3))].map((_, i) => (
+                              <div
+                                key={i}
+                                className={`h-1 w-1 rounded-full ${
+                                  isSelected
+                                    ? "bg-primary-foreground"
+                                    : "bg-primary"
+                                }`}
+                              />
+                            ))}
+                            {taskCount > 3 && (
+                              <span className="text-[10px] sm:text-xs">+{taskCount - 3}</span>
+                            )}
+                          </div>
+                        )}
                       </button>
                     );
                   })}

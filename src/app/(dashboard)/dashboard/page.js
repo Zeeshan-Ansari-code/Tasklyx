@@ -10,6 +10,7 @@ import Button from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -94,11 +95,13 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Welcome back! Here's what's happening with your projects.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Welcome back! Here's what's happening with your projects.
+          </p>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -106,7 +109,13 @@ export default function DashboardPage() {
         {statsData.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title}>
+            <motion.div
+              key={stat.title}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
@@ -119,7 +128,8 @@ export default function DashboardPage() {
                   {stat.change}
                 </p>
               </CardContent>
-            </Card>
+              </Card>
+            </motion.div>
           );
         })}
       </div>
@@ -127,7 +137,12 @@ export default function DashboardPage() {
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Boards */}
-        <Card>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+          <Card>
           <CardHeader>
             <CardTitle>Recent Boards</CardTitle>
           </CardHeader>
@@ -170,9 +185,15 @@ export default function DashboardPage() {
               </Button>
             </Link>
           </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
 
         {/* Recent Activity */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, ease: "easeOut" }}
+        >
         <Card>
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
@@ -213,8 +234,14 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+        </motion.div>
 
         {/* Upcoming Deadlines */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.26, ease: "easeOut" }}
+        >
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Upcoming Deadlines</CardTitle>
@@ -260,6 +287,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIChatPage() {
   const router = useRouter();
@@ -150,9 +151,9 @@ export default function AIChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
+      <div className="sticky top-16 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="flex items-center justify-between p-4 sm:p-6">
           <div className="flex items-center gap-4">
             <Button
@@ -187,46 +188,52 @@ export default function AIChatPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={cn(
-              "flex gap-3 max-w-4xl mx-auto",
-              message.role === "user" ? "justify-end" : "justify-start"
-            )}
-          >
-            {message.role === "assistant" && (
-              <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-primary" />
-              </div>
-            )}
-            <div
+        <AnimatePresence initial={false}>
+          {messages.map((message, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
               className={cn(
-                "max-w-[85%] rounded-xl p-4 shadow-sm",
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : message.error
-                  ? "bg-destructive/10 text-destructive border border-destructive/20"
-                  : "bg-muted text-foreground"
+                "flex gap-3 max-w-4xl mx-auto",
+                message.role === "user" ? "justify-end" : "justify-start"
               )}
             >
-              <div className="text-sm whitespace-pre-wrap wrap-break-word leading-relaxed">
-                {message.content}
+              {message.role === "assistant" && (
+                <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-primary" />
+                </div>
+              )}
+              <div
+                className={cn(
+                  "max-w-[85%] rounded-xl p-4 shadow-sm",
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : message.error
+                    ? "bg-destructive/10 text-destructive border border-destructive/20"
+                    : "bg-muted text-foreground"
+                )}
+              >
+                <div className="text-sm whitespace-pre-wrap wrap-break-word leading-relaxed">
+                  {message.content}
+                </div>
+                <div className="text-xs opacity-70 mt-2">
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
               </div>
-              <div className="text-xs opacity-70 mt-2">
-                {message.timestamp.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </div>
-            </div>
-            {message.role === "user" && (
-              <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-5 w-5 text-primary" />
-              </div>
-            )}
-          </div>
-        ))}
+              {message.role === "user" && (
+                <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
         {loading && (
           <div className="flex gap-3 justify-start max-w-4xl mx-auto">
             <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">

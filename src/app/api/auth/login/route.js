@@ -41,6 +41,7 @@ export async function POST(request) {
       name: user.name,
       email: user.email,
       avatar: user.avatar,
+      createdAt: user.createdAt,
     };
 
     // TODO: Add JWT token or session management here
