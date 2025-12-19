@@ -7,10 +7,10 @@ export async function POST(request) {
   try {
     await connectDB();
 
-    const { name, email, password } = await request.json();
+    const { name, email, password, recoveryAnswer } = await request.json();
 
     // Validation
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !recoveryAnswer) {
       return NextResponse.json(
         { message: "All fields are required" },
         { status: 400 }
@@ -41,6 +41,7 @@ export async function POST(request) {
       name,
       email,
       password: hashedPassword,
+      recoveryAnswer: recoveryAnswer.trim().toLowerCase(),
     });
 
     // Remove password from response

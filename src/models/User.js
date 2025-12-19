@@ -31,6 +31,13 @@ const UserSchema = new mongoose.Schema(
       minlength: 6,
       select: false, // Don't include password in queries by default
     },
+    // Simple security answer used for password reset (e.g. school or child name)
+    recoveryAnswer: {
+      type: String,
+      required: [true, "Please provide a recovery answer"],
+      trim: true,
+      lowercase: true,
+    },
     avatar: {
       type: String,
       default: null,
